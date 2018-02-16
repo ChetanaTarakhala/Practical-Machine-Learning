@@ -1,0 +1,107 @@
+---
+title: "Practical Machine Learning"
+author: "Chetana T"
+date: "16 February 2018"
+output: html_document
+---
+
+## Overview
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+The training data for this project are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+ To use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+ 
+The goal of the project is to predict the manner in which they did the exercise.
+
+## Getting and loading the data
+
+```{r}
+setwd("c:/Users/drkeshwala/Desktop/coursera/practical Machine learning")
+trainUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"  
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+## On inspection in Excel, found NA,#DIV/0! and blank values in the data. These are not valid observed values, so remove with na.strings parameter.
+
+training <- read.csv(url(trainUrl), na.strings = c("NA","#DIV/0!","")) 
+testing <- read.csv(url(testUrl), na.strings= c("NA","#DIV/0!",""))
+dim(training)
+dim(testing)
+```
+
+```{r}
+library(caret)
+library(rpart)
+library(rattle)
+library(ggplot2)
+set.seed(12345)
+```
+
+## Data Cleansing
+
+Removing the non-predicators from the training set.
+```{r}
+training.f <- training[,-c(1:7)]
+testing.f <- testing[, -c(1:7)]
+dim(training.f)
+dim(testing.f)
+```
+
+Removing the Na's from the dataset.
+```{r}
+training.f <- training.f[,colSums(is.na(training.f)) == 0]
+dim(training.f)
+testing.f<- testing.f[,colSums(is.na(testing.f)) == 0]
+dim(testing.f)
+```
+
+## Divide the data into training and testing set.
+```{r}
+inTrain <- createDataPartition(training.f$classe, p = 0.6, list = FALSE)
+in_training <- training.f[inTrain,]
+in_testing <- training.f[-inTrain,]
+dim(in_training)
+dim(in_testing)
+```
+
+## Algorithm
+
+### Using the Decision Tree algorithm for prediction.
+```{r}
+modFit1 <- train( classe~., method = "rpart", data = in_training)
+fancyRpartPlot(modFit1$finalModel)
+```
+
+```{r}
+prediction_dt <- predict(modFit1, in_testing)
+confusionMatrix(prediction_dt,in_testing$classe)
+```
+
+From the Decision Tree, the Accuracy value is "0.4994".
+
+### using the RandomfOrest algorithm for prediction.
+
+```{r}
+modFit2 <- train(classe~., data = in_training, method = "rf",
+                trControl = trainControl(method = "cv",5))
+prediction_rf <-predict(modFit2,in_testing)
+confusionMatrix(prediction_rf,in_testing$classe)
+```
+
+using the RandomForest algorithm, the accuracy value is "0.9934".
+
+## The important predictors in the model
+```{r}
+varImp(modFit2)
+```
+
+##  Conclusion
+
+```{r}
+values <- predict(modFit2,newdata = testing.f)
+values
+```
